@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/sergi/go-diff/diffmatchpatch"
+
 	"github.com/urfave/cli"
 )
 
@@ -30,6 +30,22 @@ func main() {
 			Usage:   "diff two s2 id files and move unions from first to the second file",
 			Action:  func(c *cli.Context) error {
 				fmt.Print("DIFFPLACE!")
+
+				file1 := ""
+				file2 := ""
+				if c.NArg() > 0 {
+					file1 = c.Args().Get(0)
+					file2 = c.Args().Get(1)
+				}
+
+				if file1 == "" || file2 == "" {
+					fmt.Println("you are required to pass in two file paths")
+					return nil
+				}
+
+				
+
+
 				return nil
 			},
 		},
@@ -41,11 +57,6 @@ func main() {
 	}
 
 
-	dmp := diffmatchpatch.New()
-
-	diffs := dmp.DiffMain(text1, text2, false)
-
-	fmt.Println(dmp.DiffPrettyText(diffs))
 
 
 
