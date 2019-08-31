@@ -20,8 +20,17 @@ func readCSV(filePath string) []string {
 	rows, err := reader.ReadAll()
 	result := []string{}
 
-	for _, row := range rows {
-		result = append(result, row[0])
+	// If file contains only one row of comma delimited items
+	if len(rows) == 1 {
+		for _, row := range rows {
+			for _, item := range row {
+				result = append(result, item)
+			}
+		}
+	} else {
+		for _, row := range rows {
+			result = append(result, row[0])
+		}
 	}
 
 	return result
@@ -57,70 +66,24 @@ func main() {
 
 				// read file
 				arr1 := readCSV(file1)
-				fmt.Println(arr1)
 				fmt.Println("length is ", len(arr1))
 
 				arr2 := readCSV(file2)
-				fmt.Println(arr2)
 				fmt.Println("length is ", len(arr2))
 
-				//csv1, err := os.Open(file1)
-				//if err != nil {
-				//	log.Fatalln("Couldn't open the csv file", err)
-				//}
-				//
-				//csv2, err := os.Open(file2)
-				//if err != nil {
-				//	log.Fatalln("Couldn't open the csv file", err)
-				//}
-				//
-				//// convert to arrays
-				//arr1 := []int{}
-				//arr2 := []int{}
-				//reader := csv.NewReader(bufio.NewReader(csv1))
-				//for {
-				//	// Read each record from csv
-				//	record, err := reader.Read()
-				//	if err == io.EOF {
-				//		break
-				//	}
-				//	if err != nil {
-				//		log.Fatal(err)
-				//	}
-				//	arr1 = append(arr1, record[0])
-				//}
-
-
-
-
-				//fmt.Print(arr1)
-				//fmt.Print(arr2)
-
 				// find commonalities in both arrays
-				//commonalities := []string{}
-				//
-				//for i := 0; i < len(arr1); i++ {
-				//	for j := 0; j < len(arr2); j++ {
-				//		if arr1[i] == arr2[j] {
-				//			commonalities = append(commonalities, arr1[i])
-				//			break
-				//		}
-				//	}
-				//}
+				commonalities := []string{}
 
-				//fmt.Println(len(arr1))
-				//fmt.Println(len(arr2))
-				//fmt.Print(commonalities)
+				for i := 0; i < len(arr1); i++ {
+					for j := 0; j < len(arr2); j++ {
+						if arr1[i] == arr2[j] {
+							commonalities = append(commonalities, arr1[i])
+							break
+						}
+					}
+				}
 
-
-
-				//dat2, err := ioutil.ReadFile(file2)
-				//if err != nil {
-				//	log.Fatal(err)
-				//}
-
-
-
+				fmt.Print(commonalities)
 
 				return nil
 			},
