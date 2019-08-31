@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/urfave/cli"
 )
@@ -34,6 +35,10 @@ func readCSV(filePath string) []string {
 	}
 
 	return result
+}
+
+func remove(slice []string, s int) []string {
+	return append(slice[:s], slice[s+1:]...)
 }
 
 func main() {
@@ -66,24 +71,42 @@ func main() {
 
 				// read file
 				arr1 := readCSV(file1)
-				fmt.Println("length is ", len(arr1))
-
 				arr2 := readCSV(file2)
-				fmt.Println("length is ", len(arr2))
 
 				// find commonalities in both arrays
 				commonalities := []string{}
 
+				// remove commonalities from first array (first file)
 				for i := 0; i < len(arr1); i++ {
 					for j := 0; j < len(arr2); j++ {
 						if arr1[i] == arr2[j] {
 							commonalities = append(commonalities, arr1[i])
+							arr1 = remove(arr1, i)
 							break
 						}
 					}
 				}
 
-				fmt.Print(commonalities)
+				// create one new files with commonalities removed from the first file
+				fmt.Println("count of comm ", len(commonalities))
+				fmt.Println("count of arr1 after ", len(arr1))
+
+				newFileName := strings.Replace(file2, ".csv", "_cleaned.csv", 1)
+				newFile, err := os.Create(newFileName)
+				if err != nil {
+					log.Fatal(err)
+				}
+				defer newFile.Close()
+
+				writer := csv.NewWriter(newFile)
+				defer writer.Flush()
+
+				err = writer.Write(arr1)
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				fmt.Println("Commonalities removed and created new file named: ", newFileName)
 
 				return nil
 			},
