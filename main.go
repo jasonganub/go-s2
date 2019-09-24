@@ -3,12 +3,15 @@ package main
 import (
 	"encoding/csv"
 	"fmt"
+	"github.com/golang/geo/s1"
+	"github.com/golang/geo/s2"
 	"log"
 	"os"
 	"strconv"
 	"strings"
 
 	"github.com/urfave/cli"
+	"github.com/paulmach/go.geojson"
 )
 
 func readCSV(filePath string) []int {
@@ -48,6 +51,19 @@ func readCSV(filePath string) []int {
 
 func remove(slice []int, s int) []int {
 	return append(slice[:s], slice[s+1:]...)
+}
+
+func s2LoopsFromFC(fc *geojson.FeatureCollection) []s2.Point {
+	coordinates := []s2.Point{}
+
+	for _, coordinate := range fc.Features[0].Geometry.Polygon[0] {
+		//s2.PointFromLatLng(coordinate[0])
+		//fmt.Println(coordinate[0])
+		latLong := s2.LatLng{s1.Angle(coordinate[0]), s1.Angle(coordinate[1])}
+		coordinates = append(coordinates, s2.PointFromLatLng(latLong))
+	}
+
+	return coordinates
 }
 
 func main() {
@@ -122,6 +138,62 @@ func main() {
 				}
 
 				fmt.Println("Commonalities removed and created new file named: ", newFileName)
+
+				return nil
+			},
+		},
+		{
+			Name:    "get s2ids",
+			Aliases: []string{"s2id"},
+			Usage:   "",
+			Action:  func(c *cli.Context) error {
+
+				const S2IDLevel = "15"
+
+				rawFeatureJSON := []byte(`{
+				 "type": "FeatureCollection",
+				 "features": [
+				   {
+					 "type": "Feature",
+					 "properties": {},
+					 "geometry": {
+					   "type": "Polygon",
+					   "coordinates": [
+						 [
+						   [
+							  107.60782241821289,
+							  -6.893148077890368
+							],
+							[
+							  107.60822474956512,
+							  -6.894474160996839
+							],
+							[
+							  107.60981798171997,
+							  -6.8941492976071075
+							],
+							[
+							  107.60939955711365,
+							  -6.892748654540805
+							],
+							[
+							  107.60782241821289,
+							  -6.893148077890368
+							]
+						 ]
+					   ]
+					 }
+				   }
+				 ]
+				}`)
+
+				fc, err := geojson.UnmarshalFeatureCollection(rawFeatureJSON)
+				if err != nil {
+					fmt.Printf("error from unmarshalling: %v",  err)
+				}
+
+				s2Loops := s2LoopsFromFC(fc)
+				fmt.Println(s2Loops)
 
 				return nil
 			},
