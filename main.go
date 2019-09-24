@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"github.com/golang/geo/s1"
 	"github.com/golang/geo/s2"
@@ -57,13 +58,129 @@ func s2LoopsFromFC(fc *geojson.FeatureCollection) []s2.Point {
 	coordinates := []s2.Point{}
 
 	for _, coordinate := range fc.Features[0].Geometry.Polygon[0] {
-		//s2.PointFromLatLng(coordinate[0])
-		//fmt.Println(coordinate[0])
 		latLong := s2.LatLng{s1.Angle(coordinate[0]), s1.Angle(coordinate[1])}
 		coordinates = append(coordinates, s2.PointFromLatLng(latLong))
 	}
 
 	return coordinates
+}
+
+func getChildren(cellID s2.CellID, level int) []s2.CellID{
+	children := []s2.CellID{}
+
+	if cellID.Level() >= level {
+		return []s2.CellID{cellID.Parent(level)}
+	}
+
+	i := cellID.ChildBeginAtLevel(level)
+	for i != cellID.ChildEndAtLevel(level) {
+		children = append(children, i)
+	}
+	return children
+}
+
+func getOuterCovering(loops []s2.Point, level int) []s2.CellID{
+	maxCells := 20
+	regionCoverer := s2.RegionCoverer{MaxLevel: level, MaxCells: maxCells}
+	coverings := []s2.CellUnion{}
+
+	for _, loop := range loops {
+		coverings = append(coverings, regionCoverer.CellUnion(loop))
+	}
+
+	coveringsUpdated := []s2.CellUnion{}
+
+	if level > 0 {
+		for _, cells := range coverings {
+			for _, cell := range cells {
+				coveringsUpdated = append(coveringsUpdated, getChildren(cell, level))
+			}
+		}
+	}
+
+	s2IDS := []s2.CellID{}
+	for _, cells := range coveringsUpdated {
+		for _, cell := range cells {
+			s2IDS = append(s2IDS, cell)
+		}
+	}
+	return s2IDS
+}
+
+func getFeature(s int) *geojson.Feature {
+	fmt.Println("\ns is ")
+	fmt.Println(s)
+
+	c := s2.CellFromCellID(s2.CellID(s))
+
+	fmt.Println("\ncell is ")
+	fmt.Println(c)
+
+	var y []s2.LatLng
+	for _, i := range []int{0, 1, 2, 3, 0} {
+		vertex := c.Vertex(i)
+		y = append(y, s2.LatLngFromPoint(vertex))
+	}
+
+	fmt.Println("\ny is ")
+	fmt.Println(y)
+
+	x := [][][]float64{}
+	for _, ll := range y {
+		lat := []float64{ll.Lat.Degrees()}
+		lng := []float64{ll.Lng.Degrees()}
+		row := [][]float64{lat, lng}
+		x = append(x, row)
+	}
+
+	fmt.Println("\nx is")
+	fmt.Println(x)
+
+	geometry := &geojson.Geometry{Polygon: x}
+
+	fmt.Println("\ngeometry is")
+	fmt.Println(geometry)
+
+	fmt.Println("string s and string c level")
+	fmt.Println(s, c.Level())
+	fmt.Println(string(s))
+	fmt.Println(string(c.Level()))
+
+	properties := map[string]interface{}{
+		"s2id": s,
+		"lvl": c.Level(),
+	}
+
+	fmt.Println("\nproperties")
+	fmt.Println(properties)
+
+	f := geojson.Feature{Geometry: geometry, Properties: properties}
+
+	fmt.Println("\nfeatures")
+	fmt.Println(f)
+
+	return nil
+}
+
+func getGeojson(s2IDs []s2.CellID) string {
+	s2 := []int{}
+	for _, s2ID := range s2IDs {
+		s2 = append(s2, int(s2ID))
+	}
+
+	features := []*geojson.Feature{}
+	for _, s := range s2 {
+		features = append(features, getFeature(s))
+	}
+	fmt.Println("features", features)
+
+	featureCollection := geojson.FeatureCollection{Features: features}
+	fcStr := json.Marshaler(featureCollection)
+
+	fmt.Println("fc string", fcStr)
+
+	geojson_url := fmt.Sprintf("http://geojson.io/#data=data:application/json,%q", fcStr)
+	return geojson_url
 }
 
 func main() {
@@ -148,7 +265,7 @@ func main() {
 			Usage:   "",
 			Action:  func(c *cli.Context) error {
 
-				const S2IDLevel = "15"
+				const S2IDLevel = 15
 
 				rawFeatureJSON := []byte(`{
 				 "type": "FeatureCollection",
@@ -193,8 +310,15 @@ func main() {
 				}
 
 				s2Loops := s2LoopsFromFC(fc)
+				fmt.Println("\ns2 loops")
 				fmt.Println(s2Loops)
 
+				s2IDs := getOuterCovering(s2Loops, S2IDLevel)
+				fmt.Println("\ns2 ids")
+				fmt.Println(s2IDs)
+
+				fmt.Println("\ngeojsonURL")
+				fmt.Println(getGeojson(s2IDs))
 				return nil
 			},
 		},
