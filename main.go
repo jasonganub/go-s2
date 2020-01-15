@@ -82,13 +82,25 @@ func getChildren(cellID s2.CellID, level int) []s2.CellID{
 	return children
 }
 
-func getOuterCovering(loops []s2.Point, level int) []s2.CellID{
+func unique(intSlice []uint64) []uint64 {
+	keys := make(map[uint64]bool)
+	var list []uint64
+	for _, entry := range intSlice {
+		if _, value := keys[entry]; !value {
+			keys[entry] = true
+			list = append(list, entry)
+		}
+	}
+	return list
+}
+
+func getS2Ids(points []s2.Point, level int) []uint64 {
 	maxCells := 100
-	regionCoverer := s2.RegionCoverer{MaxLevel: level, MaxCells: maxCells}
+	regionCoverer := s2.RegionCoverer{MinLevel: level, MaxLevel: level, MaxCells: maxCells}
 	var coverings []s2.CellUnion
 
-	for _, loop := range loops {
-		coverings = append(coverings, regionCoverer.CellUnion(loop))
+	for _, point := range points {
+		coverings = append(coverings, regionCoverer.CellUnion(point))
 	}
 
 	var coveringsUpdated []s2.CellUnion
@@ -101,13 +113,14 @@ func getOuterCovering(loops []s2.Point, level int) []s2.CellID{
 		}
 	}
 
-	var s2IDS []s2.CellID
+	var s2IDS []uint64
 	for _, cells := range coveringsUpdated {
 		for _, cell := range cells {
-			s2IDS = append(s2IDS, cell)
+			s2IDS = append(s2IDS, uint64(cell))
 		}
 	}
-	return s2IDS
+
+	return unique(s2IDS)
 }
 
 func getFeature(s int) *geojson.Feature {
@@ -268,7 +281,7 @@ func main() {
 			Usage:   "",
 			Action:  func(c *cli.Context) error {
 
-				const S2IDLevel = 20
+				const S2IDLevel = 15
 
 				rawFeatureJSON := []byte(`{
 				 "type": "FeatureCollection",
@@ -312,17 +325,11 @@ func main() {
 					fmt.Printf("error from unmarshalling: %v",  err)
 				}
 
-				coordinates := getCoordinatesAsPoints(fc)
+				points := getCoordinatesAsPoints(fc)
 
-				s2IDs := getOuterCovering(coordinates, S2IDLevel)
+				s2IDs := getS2Ids(points, S2IDLevel)
 				fmt.Println("\ns2 ids")
 				fmt.Println(s2IDs)
-
-				fmt.Println("\ns2 ids")
-				for _, s2id := range s2IDs {
-					fmt.Print(uint64(s2id))
-					fmt.Print(" ")
-				}
 
 				//
 				//fmt.Println("\ngeojsonURL")
