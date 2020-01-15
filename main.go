@@ -4,7 +4,6 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"github.com/golang/geo/s1"
 	"github.com/golang/geo/s2"
 	"log"
 	"os"
@@ -54,15 +53,19 @@ func remove(slice []int, s int) []int {
 	return append(slice[:s], slice[s+1:]...)
 }
 
-func s2LoopsFromFC(fc *geojson.FeatureCollection) []s2.Point {
-	coordinates := []s2.Point{}
+func getCoordinatesAsPoints(fc *geojson.FeatureCollection) []s2.Point {
+	var points []s2.Point
 
 	for _, coordinate := range fc.Features[0].Geometry.Polygon[0] {
-		latLong := s2.LatLng{s1.Angle(coordinate[0]), s1.Angle(coordinate[1])}
-		coordinates = append(coordinates, s2.PointFromLatLng(latLong))
+		fmt.Println(coordinate)
+		latLong := s2.PointFromLatLng(s2.LatLngFromDegrees(coordinate[1], coordinate[0]))
+		points = append(points, latLong)
 	}
 
-	return coordinates
+	fmt.Println("points")
+	fmt.Println(points)
+
+	return points
 }
 
 func getChildren(cellID s2.CellID, level int) []s2.CellID{
@@ -80,15 +83,15 @@ func getChildren(cellID s2.CellID, level int) []s2.CellID{
 }
 
 func getOuterCovering(loops []s2.Point, level int) []s2.CellID{
-	maxCells := 20
+	maxCells := 100
 	regionCoverer := s2.RegionCoverer{MaxLevel: level, MaxCells: maxCells}
-	coverings := []s2.CellUnion{}
+	var coverings []s2.CellUnion
 
 	for _, loop := range loops {
 		coverings = append(coverings, regionCoverer.CellUnion(loop))
 	}
 
-	coveringsUpdated := []s2.CellUnion{}
+	var coveringsUpdated []s2.CellUnion
 
 	if level > 0 {
 		for _, cells := range coverings {
@@ -98,7 +101,7 @@ func getOuterCovering(loops []s2.Point, level int) []s2.CellID{
 		}
 	}
 
-	s2IDS := []s2.CellID{}
+	var s2IDS []s2.CellID
 	for _, cells := range coveringsUpdated {
 		for _, cell := range cells {
 			s2IDS = append(s2IDS, cell)
@@ -265,7 +268,7 @@ func main() {
 			Usage:   "",
 			Action:  func(c *cli.Context) error {
 
-				const S2IDLevel = 15
+				const S2IDLevel = 20
 
 				rawFeatureJSON := []byte(`{
 				 "type": "FeatureCollection",
@@ -309,16 +312,21 @@ func main() {
 					fmt.Printf("error from unmarshalling: %v",  err)
 				}
 
-				s2Loops := s2LoopsFromFC(fc)
-				fmt.Println("\ns2 loops")
-				fmt.Println(s2Loops)
+				coordinates := getCoordinatesAsPoints(fc)
 
-				s2IDs := getOuterCovering(s2Loops, S2IDLevel)
+				s2IDs := getOuterCovering(coordinates, S2IDLevel)
 				fmt.Println("\ns2 ids")
 				fmt.Println(s2IDs)
 
-				fmt.Println("\ngeojsonURL")
-				fmt.Println(getGeojson(s2IDs))
+				fmt.Println("\ns2 ids")
+				for _, s2id := range s2IDs {
+					fmt.Print(uint64(s2id))
+					fmt.Print(" ")
+				}
+
+				//
+				//fmt.Println("\ngeojsonURL")
+				//fmt.Println(getGeojson(s2IDs))
 				return nil
 			},
 		},
