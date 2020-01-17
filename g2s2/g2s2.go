@@ -7,17 +7,12 @@ import (
     "github.com/urfave/cli"
 )
 
-func getCoordinatesAsPoints(fc *geojson.FeatureCollection) []s2.Point {
+func getCoordinates(fc *geojson.FeatureCollection) []s2.Point {
     var points []s2.Point
-
     for _, coordinate := range fc.Features[0].Geometry.Polygon[0] {
-        fmt.Println(coordinate)
         latLong := s2.PointFromLatLng(s2.LatLngFromDegrees(coordinate[1], coordinate[0]))
         points = append(points, latLong)
     }
-
-    fmt.Println("points")
-    fmt.Println(points)
 
     return points
 }
@@ -48,17 +43,24 @@ func unique(intSlice []uint64) []uint64 {
     return list
 }
 
-func getS2Ids(points []s2.Point, level int) []uint64 {
-    maxCells := 100
-    regionCoverer := s2.RegionCoverer{MinLevel: level, MaxLevel: level, MaxCells: maxCells}
+func getS2Ids(points []s2.Point, level int, maxCells int) []uint64 {
+
+    regionCoverer := s2.RegionCoverer{
+        MinLevel: level,
+        MaxLevel: level,
+        MaxCells: maxCells}
+
+    var loops []*s2.Loop
+    loops = append(loops, s2.LoopFromPoints(points))
+
     var coverings []s2.CellUnion
+    coverings  = append(coverings, regionCoverer.Covering(s2.PolygonFromLoops(loops)))
 
     for _, point := range points {
         coverings = append(coverings, regionCoverer.CellUnion(point))
     }
 
     var coveringsUpdated []s2.CellUnion
-
     if level > 0 {
         for _, cells := range coverings {
             for _, cell := range cells {
@@ -77,65 +79,11 @@ func getS2Ids(points []s2.Point, level int) []uint64 {
     return unique(s2IDS)
 }
 
-func getFeature(s int) *geojson.Feature {
-    fmt.Println("\ns is ")
-    fmt.Println(s)
-
-    c := s2.CellFromCellID(s2.CellID(s))
-
-    fmt.Println("\ncell is ")
-    fmt.Println(c)
-
-    var y []s2.LatLng
-    for _, i := range []int{0, 1, 2, 3, 0} {
-        vertex := c.Vertex(i)
-        y = append(y, s2.LatLngFromPoint(vertex))
-    }
-
-    fmt.Println("\ny is ")
-    fmt.Println(y)
-
-    var x [][][]float64
-    for _, ll := range y {
-        lat := []float64{ll.Lat.Degrees()}
-        lng := []float64{ll.Lng.Degrees()}
-        row := [][]float64{lat, lng}
-        x = append(x, row)
-    }
-
-    fmt.Println("\nx is")
-    fmt.Println(x)
-
-    geometry := &geojson.Geometry{Polygon: x}
-
-    fmt.Println("\ngeometry is")
-    fmt.Println(geometry)
-
-    fmt.Println("string s and string c level")
-    fmt.Println(s, c.Level())
-    fmt.Println(string(s))
-    fmt.Println(string(c.Level()))
-
-    properties := map[string]interface{}{
-        "s2id": s,
-        "lvl":  c.Level(),
-    }
-
-    fmt.Println("\nproperties")
-    fmt.Println(properties)
-
-    f := geojson.Feature{Geometry: geometry, Properties: properties}
-
-    fmt.Println("\nfeatures")
-    fmt.Println(f)
-
-    return nil
-}
-
 // Run as CLI entry point
-func Run(c *cli.Context)  {
+func Run(_ *cli.Context) {
 
-    const S2IDLevel = 15
+    const S2IDLevel = 20
+    const MaxCells = 100
 
     rawFeatureJSON := []byte(`{
 				 "type": "FeatureCollection",
@@ -176,13 +124,12 @@ func Run(c *cli.Context)  {
 
     fc, err := geojson.UnmarshalFeatureCollection(rawFeatureJSON)
     if err != nil {
-        fmt.Printf("error from unmarshalling: %v", err)
+        fmt.Printf("Bad GEOJSON file: %v", err)
     }
 
-    points := getCoordinatesAsPoints(fc)
+    points := getCoordinates(fc)
+    s2IDs := getS2Ids(points, S2IDLevel, MaxCells)
 
-    s2IDs := getS2Ids(points, S2IDLevel)
-    fmt.Println("\ns2 ids")
-    fmt.Println(s2IDs)
+    fmt.Printf("\n\nS2IDs \n%v \n", s2IDs)
 
 }

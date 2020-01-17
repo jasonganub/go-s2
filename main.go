@@ -13,7 +13,8 @@ import (
 func main() {
     app := cli.NewApp()
     app.Name = "go-s2"
-    app.Usage = "TODO usage here"
+    app.Usage = "Spherical Geometry utility collections"
+    app.Version = "0.1"
     app.Action = func(c *cli.Context) error {
         fmt.Println("Try 'help'")
         return nil
@@ -32,7 +33,7 @@ func main() {
         {
             Name:    "geojson2s2ids",
             Aliases: []string{"g2s2"},
-            Usage:   "",
+            Usage:   "Convert geojson FeatureCollection to set of S2IDs",
             Action:  func (c *cli.Context) error {
                 g2s2.Run(c)
                 return nil
