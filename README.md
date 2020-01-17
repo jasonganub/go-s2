@@ -9,6 +9,10 @@ One useful functionality of this library is to be able to have two files of cell
 the unions from just one file. This is useful when you need S2ID cells for a polygon that need to be adjacent to
 each other without overlapping or gaps.
 
+## Requirement
+- Golang 1.13
+- Go Modules
+
 ## Example
 
 ```go
