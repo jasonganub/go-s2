@@ -1,15 +1,18 @@
 package g2s2
 
 import (
+    "errors"
     "fmt"
     "github.com/golang/geo/s2"
     geojson "github.com/paulmach/go.geojson"
     "github.com/urfave/cli"
+    "io/ioutil"
+    "strconv"
 )
 
-func getCoordinates(fc *geojson.FeatureCollection) []s2.Point {
+func getCoordinates(fc *geojson.Feature) []s2.Point {
     var points []s2.Point
-    for _, coordinate := range fc.Features[0].Geometry.Polygon[0] {
+    for _, coordinate := range fc.Geometry.Polygon[0] {
         latLong := s2.PointFromLatLng(s2.LatLngFromDegrees(coordinate[1], coordinate[0]))
         points = append(points, latLong)
     }
@@ -54,8 +57,7 @@ func getS2Ids(points []s2.Point, level int, maxCells int) []uint64 {
     loops = append(loops, s2.LoopFromPoints(points))
 
     var coverings []s2.CellUnion
-    coverings  = append(coverings, regionCoverer.Covering(s2.PolygonFromLoops(loops)))
-
+    coverings = append(coverings, regionCoverer.Covering(s2.PolygonFromLoops(loops)))
     for _, point := range points {
         coverings = append(coverings, regionCoverer.CellUnion(point))
     }
@@ -79,57 +81,61 @@ func getS2Ids(points []s2.Point, level int, maxCells int) []uint64 {
     return unique(s2IDS)
 }
 
-// Run as CLI entry point
-func Run(_ *cli.Context) {
+func parseArgument(c *cli.Context) (fc *geojson.Feature, level int, err error) {
 
-    const S2IDLevel = 20
+    level, err = strconv.Atoi(c.Args().Get(1))
+    if err != nil {
+        return nil, -1, err
+    }
+
+    filePath := c.Args().First()
+    if len(filePath) <= 0 {
+        return nil, -1, errors.New("give me the file")
+    }
+
+    raw, err := ioutil.ReadFile(filePath)
+    if err != nil {
+        return nil, -1, err
+    }
+
+    fc, err = geojson.UnmarshalFeature(raw)
+    if err != nil {
+        return nil, -1, err
+    }
+
+    if fc == nil {
+        return nil, -1, errors.New("looks like bad GeoJson file. Make sure the root is a 'Feature'")
+    }
+
+    return fc, level, nil
+}
+
+// Run as CLI entry point
+func Run(c *cli.Context) error {
+
     const MaxCells = 100
 
-    rawFeatureJSON := []byte(`{
-				 "type": "FeatureCollection",
-				 "features": [
-				   {
-					 "type": "Feature",
-					 "properties": {},
-					 "geometry": {
-					   "type": "Polygon",
-					   "coordinates": [
-						 [
-						   [
-							  107.60782241821289,
-							  -6.893148077890368
-							],
-							[
-							  107.60822474956512,
-							  -6.894474160996839
-							],
-							[
-							  107.60981798171997,
-							  -6.8941492976071075
-							],
-							[
-							  107.60939955711365,
-							  -6.892748654540805
-							],
-							[
-							  107.60782241821289,
-							  -6.893148077890368
-							]
-						 ]
-					   ]
-					 }
-				   }
-				 ]
-				}`)
-
-    fc, err := geojson.UnmarshalFeatureCollection(rawFeatureJSON)
+    fc, level, err := parseArgument(c)
     if err != nil {
-        fmt.Printf("Bad GEOJSON file: %v", err)
+        return err
     }
 
     points := getCoordinates(fc)
-    s2IDs := getS2Ids(points, S2IDLevel, MaxCells)
+    s2IDs := getS2Ids(points, level, MaxCells)
 
-    fmt.Printf("\n\nS2IDs \n%v \n", s2IDs)
+    fmt.Printf("S2IDs Level %v :\n", level)
+    for _, s2id := range s2IDs {
+        fmt.Printf("%v ", s2id)
+    }
 
+    fmt.Println("\n\n\nWith Comma delimited")
+    for i, s2id := range s2IDs {
+        fmt.Print(s2id)
+        if i < (len(s2IDs) -1 ){
+            fmt.Print(", ")
+        }
+    }
+
+    fmt.Println("")
+    return nil
 }

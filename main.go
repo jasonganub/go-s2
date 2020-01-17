@@ -9,7 +9,6 @@ import (
     "os"
 )
 
-
 func main() {
     app := cli.NewApp()
     app.Name = "go-s2"
@@ -22,21 +21,19 @@ func main() {
 
     app.Commands = []cli.Command{
         {
-            Name:    "diffplace",
-            Aliases: []string{"d"},
-            Usage:   "Diff two S2ID files and move commonalities from first to the second file",
+            Name:  "diffplace",
+            Usage: "Diff two S2ID files and move commonalities from first to the second file",
             Action: func(c *cli.Context) error {
                 diffplace.Run(c)
                 return nil
             },
         },
         {
-            Name:    "geojson2s2ids",
-            Aliases: []string{"g2s2"},
-            Usage:   "Convert geojson FeatureCollection to set of S2IDs",
-            Action:  func (c *cli.Context) error {
-                g2s2.Run(c)
-                return nil
+            Name:      "g2s2",
+            Usage:     "Convert geojson FeatureCollection to set of S2IDs",
+            Action: func(c *cli.Context) error {
+                err := g2s2.Run(c)
+                return err
             },
         },
     }
