@@ -81,33 +81,34 @@ func getS2Ids(points []s2.Point, level int, maxCells int) []uint64 {
     return unique(s2IDS)
 }
 
-func parseArgument(c *cli.Context) (fc *geojson.Feature, level int, err error) {
-
+func parseArgument(c *cli.Context) (fc *geojson.Feature, level int, delimiter string, err error) {
     level, err = strconv.Atoi(c.Args().Get(1))
     if err != nil {
-        return nil, -1, err
+        return nil, -1, "", err
     }
+
+    delimiter = c.Args().Get(2)
 
     filePath := c.Args().First()
     if len(filePath) <= 0 {
-        return nil, -1, errors.New("give me the file")
+        return nil, -1, "", errors.New("give me the file")
     }
 
     raw, err := ioutil.ReadFile(filePath)
     if err != nil {
-        return nil, -1, err
+        return nil, -1, "", err
     }
 
     fc, err = geojson.UnmarshalFeature(raw)
     if err != nil {
-        return nil, -1, err
+        return nil, -1, "", err
     }
 
     if fc == nil {
-        return nil, -1, errors.New("looks like bad GeoJson file. Make sure the root is a 'Feature'")
+        return nil, -1, "", errors.New("looks like bad GeoJson file. Make sure the root is a 'Feature'")
     }
 
-    return fc, level, nil
+    return fc, level, delimiter, nil
 }
 
 // Run as CLI entry point
@@ -115,7 +116,7 @@ func Run(c *cli.Context) error {
 
     const MaxCells = 100
 
-    fc, level, err := parseArgument(c)
+    fc, level, delimiter, err := parseArgument(c)
     if err != nil {
         return err
     }
@@ -124,15 +125,16 @@ func Run(c *cli.Context) error {
     s2IDs := getS2Ids(points, level, MaxCells)
 
     fmt.Printf("S2IDs Level %v :\n", level)
-    for _, s2id := range s2IDs {
-        fmt.Printf("%v ", s2id)
-    }
+    //for _, s2id := range s2IDs {
+    //    fmt.Printf("%v ", s2id)
+    //}
 
-    fmt.Println("\n\n\nWith Comma delimited")
+    fmt.Println(delimiter)
+
     for i, s2id := range s2IDs {
         fmt.Print(s2id)
         if i < (len(s2IDs) -1 ){
-            fmt.Print(", ")
+            fmt.Print(fmt.Sprintf("%s ", delimiter))
         }
     }
 
