@@ -128,9 +128,7 @@ func Run(c *cli.Context) error {
     //for _, s2id := range s2IDs {
     //    fmt.Printf("%v ", s2id)
     //}
-
-    fmt.Println(delimiter)
-
+    
     for i, s2id := range s2IDs {
         fmt.Print(s2id)
         if i < (len(s2IDs) -1 ){
