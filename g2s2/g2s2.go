@@ -26,7 +26,7 @@ func getCoordinates(fc *geojson.Feature) []s2.Point {
 }
 
 func getChildren(cellID s2.CellID, level int) []s2.CellID {
-    var children []s2.CellID
+    children := make([]s2.CellID, 0)
 
     if cellID.Level() >= level {
         return []s2.CellID{cellID.Parent(level)}
@@ -130,9 +130,6 @@ func Run(c *cli.Context) error {
     s2IDs := getS2Ids(points, level, MaxCells)
 
     fmt.Printf("S2IDs Level %v :\n", level)
-    //for _, s2id := range s2IDs {
-    //    fmt.Printf("%v ", s2id)
-    //}
     
     for i, s2id := range s2IDs {
         fmt.Print(s2id)
