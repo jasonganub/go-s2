@@ -108,3 +108,6 @@ fabric.properties
 
 # Custom
 .idea
+
+# Binary
+go-s2
