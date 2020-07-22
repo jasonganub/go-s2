@@ -11,7 +11,12 @@ import (
 )
 
 func getCoordinates(fc *geojson.Feature) []s2.Point {
-    var points []s2.Point
+    points := make([]s2.Point, 0)
+
+    if len(fc.Geometry.Polygon) == 0 {
+        return points
+    }
+
     for _, coordinate := range fc.Geometry.Polygon[0] {
         latLong := s2.PointFromLatLng(s2.LatLngFromDegrees(coordinate[1], coordinate[0]))
         points = append(points, latLong)

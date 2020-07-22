@@ -80,6 +80,17 @@ func Test_getCoordinates(t *testing.T) {
 			}},
 			want: expected,
 		},
+		{
+			name: "Given an empty feature, should return no coordinates",
+			args: args{fc: &geojson.Feature{
+				Type: "Feature",
+				Geometry: &geojson.Geometry{
+					Type:    "Polygon",
+					Polygon: [][][]float64{},
+				},
+			}},
+			want: make([]s2.Point, 0),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
