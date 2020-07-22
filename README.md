@@ -21,5 +21,11 @@ import "github.com/jasonganub/go-s2id"
 
 ```
 
+## Build
+
+```
+go build
+```
+
 
 Reach out to me on twitter @jasonganub for any inquiries.
